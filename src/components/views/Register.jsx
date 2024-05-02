@@ -8,14 +8,27 @@ export default function Register() {
     const navigate = useNavigate();
 
     const onFinish = (values) => {
+        fetch("http://localhost:3001/register",{
+            method : "POST",
+            body: JSON.stringify(values),
+            headers: {
+                "Content-Type": "application/json"
+            }
+        })
+        .then(response=>response.json())
+        .then(data =>{
+            if (data.status == "Username already exists"){
+                notification.error({
+                    message: 'Username already exists'
+                });
+            } else {
+                notification.success({
+                    message: 'Log into your new account'
+                });
+                navigate("/login");
+        }
         console.log('Success:', values);
-        notification.success({
-            message: 'Logged in'
         });
-        notification.error({
-            message: 'Wrong username or password'
-        });
-        navigate("/");
     };
 
   return (

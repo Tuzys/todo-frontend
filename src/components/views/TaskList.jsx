@@ -7,28 +7,54 @@ import useBackend from "./useBackend";
 
 export default function TaskList() {
     const {sendRequest} = useBackend();
-    const [tasks, setTasks] = useState([
-        {"name": "wat", completed: true}
-    ]);
+    const [tasks, setTasks] = useState([]);
+
+    var token;
+    if (localStorage.getItem("token")) {
+        token = localStorage.getItem('token');
+    }
     useEffect(() => {
-        sendRequest("/tasks", "GET").then(data => {
-            console.log(data)
-            setTasks(data);
+        if (!token)  return;
+        console.log(token)
+        fetch(`http://localhost:3001/tasks` , {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "token": token
+            }
         })
+            .then(response => response.json())
+            .then(data => {setTasks(data.tasks); console.log(data); })
     }, []);
 
   
     const handleNameChange = (task, event) => {
-        console.log(event)
+        const newName = event.target.value;
+
         const newTasks = produce(tasks, draft => {
             const index = draft.findIndex(t => t.id === task.id);
-            draft[index].name = event.target.value;
+            draft[index].name = newName;
         });
         setTasks(newTasks);
-        const newTask = newTasks.find(nt => nt.id === task.id)
-        sendRequest("/tasks/"+ task.id, "PUT", newTask).then(data => {
-            console.log(data)
+        const updatedTask = { ...task, name: newName}
+        console.log(updatedTask)
+
+        fetch(`http://localhost:3001/tasks/${task.id}`, {
+            method: "PUT",
+            body: JSON.stringify(updatedTask),
+            headers: {
+                "Content-Type": "application/json",
+                "token": token
+            }
         })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to update task');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating task:', error.message);
+        });
     };
 
     const handleCompletedChange = (task, event) => {
@@ -41,31 +67,60 @@ export default function TaskList() {
     };
 
     const handleAddTask = () => {
-        setTasks(produce(tasks, draft => {
-            draft.push({
-                id: Math.random(),
-                name: "",
-                completed: false
-            });
-        }));
-        sendRequest("/tasks/", "POST").then(data => {
-            console.log(data)
+        const newTask = {
+            name: "aa"
+        }
+
+        try {
+            fetch("http://localhost:3001/tasks", {
+                method: "POST",
+                body: JSON.stringify(newTask),
+                headers: {
+                    "Content-Type": "application/json",
+                    "token": token
+                }
+            })
+        fetch("http://localhost:3001/tasks", {
+            method:"GET",
+            headers:{
+                "Content-Type": "application/json",
+                "token": token
+            }
         })
+            .then(response => response.json())
+            .then(data => {setTasks([data.tasks])})
+
+        } catch (error) {
+            console.log(error);
+        }
+
+
+            setTasks(produce(tasks, draft => {
+                draft.push(newTask);
+            }));
     };
 
-    const handleDeleteTask = (task) => {
-        console.log(task)
+    const handleDeleteTask = (task, taskId) => {
+        fetch(`http://localhost:3001/tasks/${taskId}`, {
+            method: "DELETE",
+            body: JSON.stringify(task),
+            headers: {
+                "Content-Type": "application/json",
+                "token": token
+            }
+        })
+
         setTasks(produce(tasks, draft => {
             const index = draft.findIndex(t => t.id === task.id);
             draft.splice(index, 1);
         }));
-        sendRequest("/tasks/"+ task.id, "DELETE");
     };
 
     return (
         <Row type="flex" justify="center" style={{minHeight: '100vh', marginTop: '6rem'}}>
             <Col span={12}>
                 <h1>Task List</h1>
+                <a href="/logout">Log Out</a>
                 <Button onClick={handleAddTask}>Add Task</Button>
                 <Divider />
                 <List
